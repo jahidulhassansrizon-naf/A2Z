@@ -111,7 +111,7 @@ function AdminDashboard() {
   const fetchDownloadLogs = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:3000/api/resources/download-logs",
+        "https://a2z-4ds1.onrender.com/api/resources/download-logs",
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -140,7 +140,9 @@ function AdminDashboard() {
 
   const fetchAdminResources = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/resources");
+      const res = await axios.get(
+        "https://a2z-4ds1.onrender.com/api/resources",
+      );
       if (res.data.success) {
         setAdminResources(res.data.data);
       }
@@ -152,7 +154,7 @@ function AdminDashboard() {
   const fetchChatHistory = async (userEmail) => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/messages/history/${userEmail}`,
+        `https://a2z-4ds1.onrender.com/api/messages/history/${userEmail}`,
       );
       if (res.data.success) {
         setMessages(res.data.data);
@@ -201,9 +203,12 @@ function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/students/all", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        "https://a2z-4ds1.onrender.com/api/students/all",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       setUsers(res.data.data);
       setLoading(false);
     } catch (err) {
@@ -217,7 +222,7 @@ function AdminDashboard() {
       return;
     try {
       const res = await axios.delete(
-        `http://localhost:3000/api/students/delete/${roll}`,
+        `https://a2z-4ds1.onrender.com/api/students/delete/${roll}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -234,7 +239,7 @@ function AdminDashboard() {
       return;
     try {
       const res = await axios.delete(
-        `http://localhost:3000/api/resources/${id}`,
+        `https://a2z-4ds1.onrender.com/api/resources/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -253,7 +258,7 @@ function AdminDashboard() {
     if (!window.confirm("Are you sure you want to delete this log?")) return;
     try {
       const res = await axios.delete(
-        `http://localhost:3000/api/resources/download-logs/${id}`,
+        `https://a2z-4ds1.onrender.com/api/resources/download-logs/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -271,7 +276,7 @@ function AdminDashboard() {
     setSendingEmail(true);
     try {
       await axios.post(
-        "http://localhost:3000/api/students/send-notice",
+        "https://a2z-4ds1.onrender.com/api/students/send-notice",
         emailData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -305,7 +310,7 @@ function AdminDashboard() {
 
     try {
       const res = await axios.post(
-        "http://localhost:3000/api/resources/upload",
+        "https://a2z-4ds1.onrender.com/api/resources/upload",
         formData,
         {
           headers: {

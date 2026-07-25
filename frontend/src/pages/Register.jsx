@@ -40,7 +40,7 @@ function Register() {
     setLoading(true);
     try {
       const res = await axios.post(
-        "http://localhost:3000/api/auth/verify-otp",
+        "https://a2z-4ds1.onrender.com/api/auth/verify-otp",
         {
           email: formData.email,
           otp: otp,

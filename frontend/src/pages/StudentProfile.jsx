@@ -106,9 +106,12 @@ function UserProfile() {
 
     const fetchProfileAndData = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/auth/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          "https://a2z-4ds1.onrender.com/api/auth/profile",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
         if (!res.data || !res.data.data) {
           alert(
@@ -129,14 +132,14 @@ function UserProfile() {
         if (userProfile.email) {
           try {
             const chatRes = await axios.get(
-              `http://localhost:3000/api/messages/history/${userProfile.email}`,
+              `https://a2z-4ds1.onrender.com/api/messages/history/${userProfile.email}`,
             );
             if (chatRes.data.success) {
               setMessages(chatRes.data.data);
             }
 
             const noticeRes = await axios.get(
-              `http://localhost:3000/api/students/notices/${userProfile.email}`,
+              `https://a2z-4ds1.onrender.com/api/students/notices/${userProfile.email}`,
               { headers: { Authorization: `Bearer ${token}` } },
             );
             if (noticeRes.data.success) {
@@ -167,7 +170,7 @@ function UserProfile() {
   const fetchResources = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/resources?search=${resourceSearch}&page=${resourcePage}&limit=4`,
+        `https://a2z-4ds1.onrender.com/api/resources?search=${resourceSearch}&page=${resourcePage}&limit=4`,
       );
       if (res.data.success) {
         setResources(res.data.data);
@@ -201,11 +204,14 @@ function UserProfile() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
 
-      await axios.post("http://localhost:3000/api/resources/track-download", {
-        userEmail: profile?.email,
-        userName: profile?.name,
-        resourceTitle: title,
-      });
+      await axios.post(
+        "https://a2z-4ds1.onrender.com/api/resources/track-download",
+        {
+          userEmail: profile?.email,
+          userName: profile?.name,
+          resourceTitle: title,
+        },
+      );
     } catch (error) {
       console.error("Download failed:", error);
       window.open(fileUrl, "_blank");
@@ -217,7 +223,7 @@ function UserProfile() {
     setUpdateLoading(true);
     try {
       const res = await axios.put(
-        "http://localhost:3000/api/auth/profile/update",
+        "https://a2z-4ds1.onrender.com/api/auth/profile/update",
         { name: editName, age: editAge },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -244,7 +250,7 @@ function UserProfile() {
 
     try {
       const res = await axios.put(
-        "http://localhost:3000/api/auth/profile/pic-update",
+        "https://a2z-4ds1.onrender.com/api/auth/profile/pic-update",
         formData,
         {
           headers: {
@@ -351,7 +357,7 @@ function UserProfile() {
   const handleDeleteNotice = async (noticeId) => {
     try {
       const res = await axios.delete(
-        `http://localhost:3000/api/students/notices/${noticeId}`,
+        `https://a2z-4ds1.onrender.com/api/students/notices/${noticeId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },

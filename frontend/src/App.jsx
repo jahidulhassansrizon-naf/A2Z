@@ -8,8 +8,8 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
 import StudentProfile from "./pages/StudentProfile";
 
-// 🟢 Socket Instance Export (অন্য পেজে ব্যবহারের জন্য)
-export const socket = io("http://localhost:3000");
+// 🟢 Socket Instance Export (লাইভ রেন্ডার ব্যাকএন্ড ইউআরএল সহ)
+export const socket = io("https://a2z-4ds1.onrender.com");
 
 function App() {
   const token = localStorage.getItem("token");
