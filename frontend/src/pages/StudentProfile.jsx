@@ -189,21 +189,19 @@ function UserProfile() {
     return () => clearTimeout(timer);
   }, [resourceSearch, resourcePage]);
 
+  // Download handle fix করার জন্য কোড এখানে আপডেট করা হয়েছে
   const handleDownload = async (fileUrl, title) => {
     try {
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-
+      // প্রথমে সরাসরি অ্যাঙ্কর ট্যাগ ব্যবহার করে ডাউনলোডের চেষ্টা করা (CORS সমস্যা এড়াতে এবং ফাইল সরাসরি নামানোর জন্য)
       const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = title || "download";
+      link.href = fileUrl;
+      link.setAttribute("download", title || "download");
+      link.setAttribute("target", "_blank");
       document.body.appendChild(link);
       link.click();
-
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
 
+      // ডাউনলোড ট্র্যাক করার API কল
       await axios.post(
         "https://a2z-4ds1.onrender.com/api/resources/track-download",
         {
