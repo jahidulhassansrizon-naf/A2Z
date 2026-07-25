@@ -54,7 +54,9 @@ const addResource = async (req, res) => {
         .json({ success: false, message: "Title is required" });
     }
 
-    const fileUrl = `http://localhost:3000/uploads/${req.file.filename}`;
+    // ব্যাকএন্ডের ডাইনামিক বেস ইউআরএল তৈরি করা (লোকাল বা লাইভ সার্ভার অনুযায়ী)
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
     const newResource = new Resource({
       title,
