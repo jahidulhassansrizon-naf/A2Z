@@ -192,14 +192,26 @@ function UserProfile() {
   // Download handle fix করার জন্য কোড এখানে আপডেট করা হয়েছে
   const handleDownload = async (fileUrl, title) => {
     try {
-      // প্রথমে সরাসরি অ্যাঙ্কর ট্যাগ ব্যবহার করে ডাউনলোডের চেষ্টা করা (CORS সমস্যা এড়াতে এবং ফাইল সরাসরি নামানোর জন্য)
+      // ফাইলটি ফেচ করে ব্লব (Blob) বানিয়ে ডাইরেক্ট ডাউনলোডের ব্যবস্থা করা
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
       const link = document.createElement("a");
-      link.href = fileUrl;
-      link.setAttribute("download", title || "download");
-      link.setAttribute("target", "_blank");
+      link.href = blobUrl;
+
+      // ফাইলের সঠিক এক্সটেনশন বের করা বা ডিফল্ট নাম সেট করা
+      const extension = fileUrl.split(".").pop().split("?")[0] || "file";
+      const fileName = title
+        ? `${title}.${extension}`
+        : `downloaded-file.${extension}`;
+
+      link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
+
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
 
       // ডাউনলোড ট্র্যাক করার API কল
       await axios.post(
