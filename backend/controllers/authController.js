@@ -24,8 +24,10 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    let userRole = role === "admin" ? "admin" : "student";
+    // User role set
+    const userRole = role === "admin" ? "admin" : "student";
 
+    // Student check
     if (userRole === "student") {
       if (!roll) {
         return res.status(400).json({
@@ -44,17 +46,17 @@ exports.sendOTP = async (req, res) => {
       }
     }
 
-    // Admin সিকিউরিটি চেক
+    // Admin security check
     if (role === "admin" && adminSecret !== "NAFIA") {
       return res.status(403).json({
         message: "ভুল Admin Secret Key! আপনি এডমিন হতে পারবেন না।",
       });
     }
 
-    // 🎲 6 Digit Random OTP Generate
+    // 🎲 6 Digit Random OTP
     const generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // ⏱️ Store user info and OTP temporarily (5 minutes validity)
+    // ⏱️ OTP Store — 5 minutes
     otpStore.set(email, {
       userData: {
         name,
@@ -67,11 +69,16 @@ exports.sendOTP = async (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // 📩 Send Email via Resend API
+    // 📧 Send OTP using Resend API
     const { data, error } = await resend.emails.send({
-      from: "A2Z Management System <onboarding@resend.dev>",
+      from:
+        process.env.RESEND_FROM_EMAIL ||
+        "A2Z Management System <onboarding@resend.dev>",
+
       to: [email],
+
       subject: `${generatedOTP} is your A to Z Platform verification code`,
+
       text: `Hi ${name},
 
 Your verification code is: ${generatedOTP}.
@@ -80,6 +87,7 @@ This code will expire in 5 minutes.
 
 Thank you,
 A to Z Team`,
+
       html: `
         <!DOCTYPE html>
         <html>
@@ -97,6 +105,7 @@ A to Z Team`,
               padding: 20px;
             "
           >
+
             <table
               width="100%"
               cellpadding="0"
@@ -110,6 +119,7 @@ A to Z Team`,
                 padding: 30px;
               "
             >
+
               <tr>
                 <td>
 
@@ -152,6 +162,7 @@ A to Z Team`,
                       margin: 20px 0;
                     "
                   >
+
                     <span
                       style="
                         font-size: 32px;
@@ -162,6 +173,7 @@ A to Z Team`,
                     >
                       ${generatedOTP}
                     </span>
+
                   </div>
 
                   <p
@@ -194,35 +206,48 @@ A to Z Team`,
 
                 </td>
               </tr>
+
             </table>
+
           </body>
         </html>
       `,
     });
 
-    // Resend error হলে
+    // ❌ Resend Error
     if (error) {
       console.error("========== RESEND ERROR ==========");
       console.error(error);
       console.error("=================================");
+
+      // OTP failed, তাই temporary OTP-ও remove
+      otpStore.delete(email);
 
       return res.status(500).json({
         message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
       });
     }
 
+    // ✅ Email successfully sent
     console.log("OTP email sent successfully:", data);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: `আপনার ইমেইল (${email})-এ ওটিপি পাঠানো হয়েছে! 📩`,
+      message: `আপনার ইমেইল (${email})-এ ওটিপি পাঠানো হয়েছে!`,
     });
   } catch (err) {
     console.error("========== RESEND ERROR ==========");
     console.error(err);
     console.error("=================================");
 
-    res.status(500).json({
+    // Error হলে OTP remove
+    const email = req.body?.email;
+
+    if (email) {
+      otpStore.delete(email);
+    }
+
+    return res.status(500).json({
       message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
     });
   }
@@ -233,6 +258,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
+    // OTP আছে কিনা
     const record = otpStore.get(email);
 
     if (!record) {
@@ -241,6 +267,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
       });
     }
 
+    // OTP expired কিনা
     if (Date.now() > record.expiresAt) {
       otpStore.delete(email);
 
@@ -249,17 +276,20 @@ exports.verifyOTPAndRegister = async (req, res) => {
       });
     }
 
-    if (record.otp !== otp.trim()) {
+    // OTP input check
+    if (!otp || record.otp !== otp.trim()) {
       return res.status(400).json({
         message: "ভুল ওটিপি কোড! সঠিক কোডটি দিন।",
       });
     }
 
-    // OTP Verified! Now save to Database
+    // OTP verified
     const { name, password, role, roll } = record.userData;
 
+    // Password hash
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create User
     const user = await User.create({
       name,
       email,
@@ -268,6 +298,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
       roll: role === "student" ? Number(roll) : null,
     });
 
+    // Student হলে Student collection-এও save
     if (role === "student") {
       await Student.create({
         name,
@@ -277,16 +308,18 @@ exports.verifyOTPAndRegister = async (req, res) => {
       });
     }
 
-    // Clear OTP after success
+    // OTP clear
     otpStore.delete(email);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "ইমেইল ভেরিফাইড! অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! 🎉",
+      message: "ইমেইল ভেরিফাইড! অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!",
       data: user,
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Registration error:", err);
+
+    return res.status(500).json({
       message: err.message,
     });
   }
@@ -325,9 +358,10 @@ exports.login = async (req, res) => {
       },
     );
 
-    res.status(200).json({
-      message: "লগইন সফল হয়েছে! 🎉",
+    return res.status(200).json({
+      message: "লগইন সফল হয়েছে!",
       token,
+
       user: {
         id: user._id,
         name: user.name,
@@ -337,7 +371,9 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Login error:", err);
+
+    return res.status(500).json({
       message: err.message,
     });
   }
@@ -354,11 +390,13 @@ exports.getProfile = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       data: user,
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Profile error:", err);
+
+    return res.status(500).json({
       message: err.message,
     });
   }
