@@ -2,22 +2,12 @@ const User = require("../models/userModel");
 const Student = require("../models/studentModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const { Resend } = require("resend");
+
 // 🔑 Temporary OTP Storage (Memory)
 const otpStore = new Map();
 
-// 📧 Nodemailer Transporter Setup
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
+// 📧 Resend Setup
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 📩 1. Send OTP to Real Email
@@ -67,9 +57,9 @@ exports.sendOTP = async (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // 📩 Send Email (Inbox Optimized)
-    const mailOptions = {
-      from: `A to Z Support <${process.env.EMAIL_USER}>`,
+    // 📩 Send Email via Resend API
+    await resend.emails.send({
+      from: "A2Z Platform <onboarding@resend.dev>",
       to: email,
       subject: `${generatedOTP} is your A to Z Platform verification code`,
       text: `Hi ${name},\n\nYour verification code is: ${generatedOTP}. This code will expire in 5 minutes.\n\nThank you,\nA to Z Team`,
@@ -98,14 +88,6 @@ exports.sendOTP = async (req, res) => {
           </body>
         </html>
       `,
-    };
-
-    await resend.emails.send({
-      from: "A2Z Platform <onboarding@resend.dev>",
-      to: email,
-      subject: `${generatedOTP} is your A to Z Platform verification code`,
-      html: mailOptions.html,
-      text: mailOptions.text,
     });
 
     res.status(200).json({
@@ -232,6 +214,3 @@ exports.getProfile = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-// JWT - json web token
-//Bcrypt(password Hashing)
-// what is hashing
