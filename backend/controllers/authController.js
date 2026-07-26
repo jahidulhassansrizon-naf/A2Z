@@ -2,18 +2,26 @@ const User = require("../models/userModel");
 const Student = require("../models/studentModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Resend } = require("resend");
 
 // 🔑 Temporary OTP Storage (Memory)
 const otpStore = new Map();
 
-// 📧 Resend Setup
-const resend = new Resend(process.env.RESEND_API_KEY);
+// 📧 Google Apps Script Email API
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
 // 📩 1. Send OTP to Real Email
 exports.sendOTP = async (req, res) => {
   try {
     const { name, email, password, role, roll, adminSecret } = req.body;
+
+    // Google Script URL check
+    if (!GOOGLE_SCRIPT_URL) {
+      console.error("GOOGLE_SCRIPT_URL is missing in environment variables");
+
+      return res.status(500).json({
+        message: "Email service configuration missing.",
+      });
+    }
 
     // ইমেইল ডুপ্লিকেট চেক
     const existingUser = await User.findOne({ email });
@@ -24,7 +32,7 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    // User role set
+    // User role
     const userRole = role === "admin" ? "admin" : "student";
 
     // Student check
@@ -56,7 +64,7 @@ exports.sendOTP = async (req, res) => {
     // 🎲 6 Digit Random OTP
     const generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // ⏱️ OTP Store — 5 minutes
+    // ⏱️ Store user info and OTP temporarily (5 minutes)
     otpStore.set(email, {
       userData: {
         name,
@@ -69,159 +77,150 @@ exports.sendOTP = async (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // 📧 Send OTP using Resend API
-    const { data, error } = await resend.emails.send({
-      from:
-        process.env.RESEND_FROM_EMAIL ||
-        "A2Z Management System <onboarding@resend.dev>",
+    // 📧 Email HTML
+    const emailHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Email Verification</title>
+        </head>
 
-      to: [email],
-
-      subject: `${generatedOTP} is your A to Z Platform verification code`,
-
-      text: `Hi ${name},
-
-Your verification code is: ${generatedOTP}.
-
-This code will expire in 5 minutes.
-
-Thank you,
-A to Z Team`,
-
-      html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Email Verification</title>
-          </head>
-
-          <body
+        <body
+          style="
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f7;
+            color: #51545e;
+            margin: 0;
+            padding: 20px;
+          "
+        >
+          <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
             style="
-              font-family: Arial, sans-serif;
-              background-color: #f4f4f7;
-              color: #51545e;
-              margin: 0;
-              padding: 20px;
+              max-width: 600px;
+              margin: 0 auto;
+              background: #ffffff;
+              border-radius: 8px;
+              border: 1px solid #eaeaec;
+              padding: 30px;
             "
           >
+            <tr>
+              <td>
 
-            <table
-              width="100%"
-              cellpadding="0"
-              cellspacing="0"
-              style="
-                max-width: 600px;
-                margin: 0 auto;
-                background: #ffffff;
-                border-radius: 8px;
-                border: 1px solid #eaeaec;
-                padding: 30px;
-              "
-            >
+                <h2
+                  style="
+                    color: #333333;
+                    font-size: 20px;
+                    margin-top: 0;
+                  "
+                >
+                  Email Verification
+                </h2>
 
-              <tr>
-                <td>
+                <p
+                  style="
+                    color: #51545e;
+                    font-size: 14px;
+                  "
+                >
+                  Hello <b>${name}</b>,
+                </p>
 
-                  <h2
+                <p
+                  style="
+                    color: #51545e;
+                    font-size: 14px;
+                  "
+                >
+                  Use the verification code below to complete
+                  your registration on A to Z Platform:
+                </p>
+
+                <div
+                  style="
+                    background-color: #f0fdf4;
+                    border: 1px solid #bbf7d0;
+                    border-radius: 6px;
+                    text-align: center;
+                    padding: 15px;
+                    margin: 20px 0;
+                  "
+                >
+                  <span
                     style="
-                      color: #333333;
-                      font-size: 20px;
-                      margin-top: 0;
+                      font-size: 32px;
+                      font-weight: bold;
+                      letter-spacing: 6px;
+                      color: #16a34a;
                     "
                   >
-                    Email Verification
-                  </h2>
+                    ${generatedOTP}
+                  </span>
+                </div>
 
-                  <p
-                    style="
-                      color: #51545e;
-                      font-size: 14px;
-                    "
-                  >
-                    Hello <b>${name}</b>,
-                  </p>
+                <p
+                  style="
+                    color: #6b7280;
+                    font-size: 12px;
+                  "
+                >
+                  This code is valid for 5 minutes.
+                  If you did not request this, please ignore this email.
+                </p>
 
-                  <p
-                    style="
-                      color: #51545e;
-                      font-size: 14px;
-                    "
-                  >
-                    Use the verification code below to complete
-                    your registration on A to Z Platform:
-                  </p>
+                <hr
+                  style="
+                    border: none;
+                    border-top: 1px solid #eaeaec;
+                    margin: 20px 0;
+                  "
+                />
 
-                  <div
-                    style="
-                      background-color: #f0fdf4;
-                      border: 1px solid #bbf7d0;
-                      border-radius: 6px;
-                      text-align: center;
-                      padding: 15px;
-                      margin: 20px 0;
-                    "
-                  >
+                <p
+                  style="
+                    color: #9ca3af;
+                    font-size: 11px;
+                    text-align: center;
+                  "
+                >
+                  © A2Z Management System. All rights reserved.
+                </p>
 
-                    <span
-                      style="
-                        font-size: 32px;
-                        font-weight: bold;
-                        letter-spacing: 6px;
-                        color: #16a34a;
-                      "
-                    >
-                      ${generatedOTP}
-                    </span>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `;
 
-                  </div>
-
-                  <p
-                    style="
-                      color: #6b7280;
-                      font-size: 12px;
-                    "
-                  >
-                    This code is valid for 5 minutes.
-                    If you did not request this, please ignore this email.
-                  </p>
-
-                  <hr
-                    style="
-                      border: none;
-                      border-top: 1px solid #eaeaec;
-                      margin: 20px 0;
-                    "
-                  />
-
-                  <p
-                    style="
-                      color: #9ca3af;
-                      font-size: 11px;
-                      text-align: center;
-                    "
-                  >
-                    © A2Z Management System. All rights reserved.
-                  </p>
-
-                </td>
-              </tr>
-
-            </table>
-
-          </body>
-        </html>
-      `,
+    // 📧 Send email through Google Apps Script
+    const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        subject: `${generatedOTP} is your A to Z Platform verification code`,
+        html: emailHTML,
+      }),
     });
 
-    // ❌ Resend Error
-    if (error) {
-      console.error("========== RESEND ERROR ==========");
-      console.error(error);
-      console.error("=================================");
+    const googleResult = await googleResponse.json();
 
-      // OTP failed, তাই temporary OTP-ও remove
+    console.log("Google Apps Script response:", googleResult);
+
+    // ❌ Google Apps Script error
+    if (!googleResult.success) {
       otpStore.delete(email);
+
+      console.error("========== GOOGLE EMAIL ERROR ==========");
+      console.error(googleResult);
+      console.error("========================================");
 
       return res.status(500).json({
         message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
@@ -229,18 +228,17 @@ A to Z Team`,
     }
 
     // ✅ Email successfully sent
-    console.log("OTP email sent successfully:", data);
+    console.log("OTP email sent successfully to:", email);
 
     return res.status(200).json({
       success: true,
       message: `আপনার ইমেইল (${email})-এ ওটিপি পাঠানো হয়েছে!`,
     });
   } catch (err) {
-    console.error("========== RESEND ERROR ==========");
+    console.error("========== EMAIL ERROR ==========");
     console.error(err);
     console.error("=================================");
 
-    // Error হলে OTP remove
     const email = req.body?.email;
 
     if (email) {
@@ -298,7 +296,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
       roll: role === "student" ? Number(roll) : null,
     });
 
-    // Student হলে Student collection-এও save
+    // Student হলে Student collection-এ save
     if (role === "student") {
       await Student.create({
         name,
@@ -360,6 +358,7 @@ exports.login = async (req, res) => {
 
     return res.status(200).json({
       message: "লগইন সফল হয়েছে!",
+
       token,
 
       user: {
