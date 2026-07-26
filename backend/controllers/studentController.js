@@ -55,7 +55,7 @@ exports.deleteStudentByRoll = async (req, res) => {
 };
 
 // 📧 ৪. স্টুডেন্টকে সরাসরি ইমেইল পাঠানোর ফাংশন (Google Apps Script) এবং ডাটাবেজে সেভ করা
-exports.sendNotice = async (req, res) => {
+exports.sendSystemNotice = async (req, res) => {
   const { email, subject, message } = req.body;
 
   if (!email || !message) {
