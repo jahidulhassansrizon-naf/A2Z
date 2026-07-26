@@ -210,7 +210,21 @@ exports.sendOTP = async (req, res) => {
       }),
     });
 
-    const googleResult = await googleResponse.json();
+    const responseText = await googleResponse.text();
+    let googleResult;
+
+    try {
+      googleResult = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(
+        "Google Script did not return JSON. Response was:",
+        responseText,
+      );
+      otpStore.delete(email);
+      return res.status(500).json({
+        message: "ইমেইল সার্ভিস থেকে সঠিক ফরম্যাটে ডেটা আসেনি!",
+      });
+    }
 
     console.log("Google Apps Script response:", googleResult);
 
