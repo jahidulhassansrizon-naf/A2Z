@@ -15,7 +15,6 @@ const authRoutes = require("./routes/authRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
-const noteRoutes = require("./routes/noteRoutes");
 
 const app = express();
 
@@ -93,7 +92,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/resources", resourceRoutes);
-app.use("/api/notes", noteRoutes);
 
 const PORT = process.env.PORT || 3000;
 
