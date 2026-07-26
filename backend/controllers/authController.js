@@ -3,7 +3,7 @@ const Student = require("../models/studentModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-
+const { Resend } = require("resend");
 // 🔑 Temporary OTP Storage (Memory)
 const otpStore = new Map();
 
@@ -17,6 +17,8 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 📩 1. Send OTP to Real Email
 exports.sendOTP = async (req, res) => {
@@ -98,17 +100,26 @@ exports.sendOTP = async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      from: "A2Z Platform <onboarding@resend.dev>",
+      to: email,
+      subject: `${generatedOTP} is your A to Z Platform verification code`,
+      html: mailOptions.html,
+      text: mailOptions.text,
+    });
 
     res.status(200).json({
       success: true,
       message: `আপনার ইমেইল (${email})-এ ওটিপি পাঠানো হয়েছে! 📩`,
     });
   } catch (err) {
-    console.error("Email OTP Error:", err);
-    res
-      .status(500)
-      .json({ message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে! সঠিক ইমেইল প্রদান করুন।" });
+    console.error("========== RESEND ERROR ==========");
+    console.error(err);
+    console.error("==================================");
+
+    res.status(500).json({
+      message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
+    });
   }
 };
 
