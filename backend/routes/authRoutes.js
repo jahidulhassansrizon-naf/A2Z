@@ -67,7 +67,8 @@ router.put(
           .json({ success: false, message: "কোনো ছবি আপলোড করা হয়নি।" });
       }
 
-      const picUrl = `http://localhost:3000/uploads/${req.file.filename}`;
+      const baseUrl = process.env.BASE_URL || `https://${req.get("host")}`;
+      const picUrl = `${baseUrl}/uploads/${req.file.filename}`;
       const userId = req.user.id;
 
       const updatedUser = await User.findByIdAndUpdate(
