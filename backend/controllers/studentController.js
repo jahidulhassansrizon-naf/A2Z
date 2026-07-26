@@ -1,7 +1,9 @@
 const Student = require("../models/studentModel");
 const User = require("../models/userModel");
 const Notice = require("../models/noticeModel");
-const nodemailer = require("nodemailer");
+
+// 📧 Google Apps Script Email API URL
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
 // ১. সকল স্টুডেন্ট দেখা
 exports.getAllStudents = async (req, res) => {
@@ -52,7 +54,7 @@ exports.deleteStudentByRoll = async (req, res) => {
   }
 };
 
-// 📧 ৪. স্টুডেন্টকে সরাসরি ইমেইল পাঠানোর ফাংশন (Gmail App Password) এবং ডাটাবেজে সেভ করা
+// 📧 ৪. স্টুডেন্টকে সরাসরি ইমেইল পাঠানোর ফাংশন (Google Apps Script) এবং ডাটাবেজে সেভ করা
 exports.sendNotice = async (req, res) => {
   const { email, subject, message } = req.body;
 
@@ -60,54 +62,83 @@ exports.sendNotice = async (req, res) => {
     return res.status(400).json({ message: "Email and message are required." });
   }
 
+  if (!GOOGLE_SCRIPT_URL) {
+    console.error("GOOGLE_SCRIPT_URL is missing in environment variables");
+    return res.status(500).json({
+      success: false,
+      message: "Email service configuration missing.",
+    });
+  }
+
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+    const noticeSubject = subject || "Important Notice from A to Z Platform";
+
+    const noticeHTML = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
+        <h2 style="color: #0284c7; margin-bottom: 10px;">A to Z Platform Notification</h2>
+        <p style="font-size: 15px;">Dear Student,</p>
+        <div style="background-color: #f1f5f9; padding: 15px; border-left: 4px solid #0284c7; margin: 15px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #1e293b;">${message}</p>
+        </div>
+        <p style="font-size: 14px;">If you have any questions regarding this notice, please contact administration.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 20px;" />
+        <p style="font-size: 12px; color: #94a3b8;">This is an official automated notification from A to Z Platform Administration.</p>
+      </div>
+    `;
+
+    const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        email: email,
+        subject: noticeSubject,
+        html: noticeHTML,
+      }),
     });
 
-    const mailOptions = {
-      from: `"A to Z Admin" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: subject || "Important Notice from A to Z Platform",
-      text: message,
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
-          <h2 style="color: #0284c7; margin-bottom: 10px;">A to Z Platform Notification</h2>
-          <p style="font-size: 15px;">Dear Student,</p>
-          <div style="background-color: #f1f5f9; padding: 15px; border-left: 4px solid #0284c7; margin: 15px 0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 14px; color: #1e293b;">${message}</p>
-          </div>
-          <p style="font-size: 14px;">If you have any questions regarding this notice, please contact administration.</p>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 20px;" />
-          <p style="font-size: 12px; color: #94a3b8;">This is an official automated notification from A to Z Platform Administration.</p>
-        </div>
-      `,
-    };
+    const responseText = await googleResponse.text();
+    let googleResult;
 
-    // মেইল পাঠানো
-    await transporter.sendMail(mailOptions);
+    try {
+      googleResult = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(
+        "Google Script did not return JSON. Response was:",
+        responseText,
+      );
+      return res.status(500).json({
+        message: "ইমেইল সার্ভিস থেকে সঠিক ফরম্যাটে ডেটা আসেনি!",
+      });
+    }
+
+    if (!googleResult.success) {
+      console.error("Google Email Error:", googleResult);
+      return res.status(500).json({
+        message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
+      });
+    }
 
     // ডাটাবেজে নোটিশ সেভ করা
     await Notice.create({
       email: email,
-      subject: subject || "Important Notice from A to Z Platform",
+      subject: noticeSubject,
       message: message,
     });
 
-    res
-      .status(200)
-      .json({ message: "Email sent successfully and saved to database." });
+    res.status(200).json({
+      success: true,
+      message: "Email sent successfully and saved to database.",
+    });
   } catch (err) {
     console.error("Email error:", err);
     res.status(500).json({
-      message: "Failed to send email. Please check your .env configuration.",
+      message: "Failed to send email. Please check your configuration.",
     });
   }
 };
+
 // ৫. ইউজারের ইমেইল দিয়ে তার নোটিশগুলো নিয়ে আসার ফাংশন
 exports.getNoticesByEmail = async (req, res) => {
   try {
