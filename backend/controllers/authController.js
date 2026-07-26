@@ -414,3 +414,103 @@ exports.getProfile = async (req, res) => {
     });
   }
 };
+
+// 📢 Send System Notice via Email (Using Google Apps Script)
+exports.sendSystemNotice = async (req, res) => {
+  try {
+    const { email, subject, message } = req.body;
+
+    if (!GOOGLE_SCRIPT_URL) {
+      console.error("GOOGLE_SCRIPT_URL is missing in environment variables");
+      return res.status(500).json({
+        success: false,
+        message: "Email service configuration missing.",
+      });
+    }
+
+    if (!email || !subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "সব ফিল্ড পূরণ করা আবশ্যক!",
+      });
+    }
+
+    const noticeHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>System Notice</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; color: #51545e; margin: 0; padding: 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #eaeaec; padding: 30px;">
+            <tr>
+              <td>
+                <h2 style="color: #333333; font-size: 20px; margin-top: 0;">
+                  📢 System Notice / Announcement
+                </h2>
+                <p style="color: #51545e; font-size: 14px;">
+                  <b>Subject:</b> ${subject}
+                </p>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0; color: #334155; font-size: 14px; white-space: pre-wrap;">
+                  ${message}
+                </div>
+                <hr style="border: none; border-top: 1px solid #eaeaec; margin: 20px 0;" />
+                <p style="color: #9ca3af; font-size: 11px; text-align: center;">
+                  © A2Z Management System. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const googleResponse = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        subject: subject,
+        html: noticeHTML,
+      }),
+    });
+
+    const responseText = await googleResponse.text();
+    let googleResult;
+
+    try {
+      googleResult = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(
+        "Google Script did not return JSON. Response was:",
+        responseText,
+      );
+      return res.status(500).json({
+        success: false,
+        message: "ইমেইল সার্ভিস থেকে সঠিক ফরম্যাটে ডেটা আসেনি!",
+      });
+    }
+
+    if (!googleResult.success) {
+      console.error("Google Email Error:", googleResult);
+      return res.status(500).json({
+        success: false,
+        message: "নোটিশ ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "সফলভাবে নোটিশ ইমেইল পাঠানো হয়েছে!",
+    });
+  } catch (err) {
+    console.error("Notice send error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "ইমেইল পাঠাতে সমস্যা হয়েছে!",
+    });
+  }
+};

@@ -4,8 +4,8 @@ const {
   getAllStudents,
   getStudentByRoll,
   deleteStudentByRoll,
-  sendNotice,
-  getNoticesByEmail, // 👈 নতুন কন্ট্রোলার ইমপোর্ট করা হলো
+  sendSystemNotice, // 👈 sendNotice এর বদলে এটি দিন
+  getNoticesByEmail,
 } = require("../controllers/studentController");
 
 const { verifyToken, verifyAdmin } = require("../middleware/authMiddleware");
@@ -19,13 +19,13 @@ router.get("/:roll", verifyToken, getStudentByRoll);
 // ৩. স্টুডেন্ট ডিলিট করার রাউট (Admin Only)
 router.delete("/delete/:roll", verifyToken, verifyAdmin, deleteStudentByRoll);
 
-// 📧 ৪. স্টুডেন্টকে ইমেইল/নোটিশ পাঠানোর রাউট (Admin Only)
-router.post("/send-notice", verifyToken, verifyAdmin, sendNotice);
+// 📧 ৪. স্টুডেন্টকে নোটিশ পাঠানোর রাউট (Admin Only)
+router.post("/send-notice", verifyToken, verifyAdmin, sendSystemNotice); // 👈 এখানে sendSystemNotice বসানো হলো
 
-// 📌 ৫. ইউজারের নোটিশগুলো দেখার রাউট (User Email দিয়ে)
+// 📌 ৫. ইউজারের নোটিশগুলো দেখার রাউট (User Email দিয়ে)
 router.get("/notices/:email", verifyToken, getNoticesByEmail);
 
-// 🗑️ ৬. নোটিশ আইডি দিয়ে নোটিশ ডিলিট করার রুট
+// 🗑️ ৬. নোটিশ আইডি দিয়ে নোটিশ ডিলিট করার রুট
 router.delete("/notices/:id", verifyToken, async (req, res) => {
   try {
     const noticeId = req.params.id;
