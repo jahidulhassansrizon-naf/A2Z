@@ -2,21 +2,13 @@ const User = require("../models/userModel");
 const Student = require("../models/studentModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
 // 🔑 Temporary OTP Storage (Memory)
 const otpStore = new Map();
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// 📧 Resend Setup
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 📩 1. Send OTP to Real Email
 exports.sendOTP = async (req, res) => {
@@ -75,10 +67,10 @@ exports.sendOTP = async (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // 📩 Send Email via Gmail SMTP
-    await transporter.sendMail({
-      from: `"A2Z Management System" <${process.env.EMAIL_USER}>`,
-      to: email,
+    // 📩 Send Email via Resend API
+    const { data, error } = await resend.emails.send({
+      from: "A2Z Management System <onboarding@resend.dev>",
+      to: [email],
       subject: `${generatedOTP} is your A to Z Platform verification code`,
       text: `Hi ${name},
 
@@ -208,14 +200,27 @@ A to Z Team`,
       `,
     });
 
+    // Resend error হলে
+    if (error) {
+      console.error("========== RESEND ERROR ==========");
+      console.error(error);
+      console.error("=================================");
+
+      return res.status(500).json({
+        message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
+      });
+    }
+
+    console.log("OTP email sent successfully:", data);
+
     res.status(200).json({
       success: true,
       message: `আপনার ইমেইল (${email})-এ ওটিপি পাঠানো হয়েছে! 📩`,
     });
   } catch (err) {
-    console.error("========== GMAIL SMTP ERROR ==========");
+    console.error("========== RESEND ERROR ==========");
     console.error(err);
-    console.error("======================================");
+    console.error("=================================");
 
     res.status(500).json({
       message: "ইমেইল পাঠাতে ব্যর্থ হয়েছে!",
